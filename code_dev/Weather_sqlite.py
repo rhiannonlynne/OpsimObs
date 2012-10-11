@@ -26,7 +26,10 @@ _day2sec = 24.0*60.0*60.0
 
 class Weather():
     """Weather: a class to setup and query in-memory sqlite databases of cloud and seeing values."""
-    def __init__(self, config):
+    def __init__(self):
+        return
+
+    def readWeather(self, config):
         """Instantiate object and set up databases in memory. """
         # config is needed as it stores the names of the database dump files on disk.
         self.maxtime = {}
@@ -36,13 +39,13 @@ class Weather():
         # Get maxtime values (required for wraparound of queries in time if db length < survey length)
         #  and get conn and cursors for database.
         for db in ('cloud', 'seeing'):
-            self.maxtime[db], self.conn[db], self.cursor[db] = self.setupWeatherDB(db, config)
+            self.maxtime[db], self.conn[db], self.cursor[db] = self._setupWeatherDB(db, config)
         return
 
     def getCloud(self, mjd, config):
         """Query the sqlite in-memory database to return an interpolated cloud value. """
         db= 'cloud'
-        cloud = self.queryDB(mjd, db, config)
+        cloud = self._queryDB(mjd, db, config)
         return cloud
         
     def getSeeing(self, mjd, airmass, filter, config):
@@ -50,7 +53,7 @@ class Weather():
         Must provide the airmass and filter of observation to provide adjustments for the
         effect of the atmosphere and filter (and telescope components). """
         db = 'seeing'
-        rawseeing = self.queryDB(mjd, db, config)
+        rawseeing = self._queryDB(mjd, db, config)
         # Adjust seeing for airmass of observation.
         seeing = rawseeing * numpy.power(airmass, 0.6)
         # Adjust seeing for the filter.
@@ -66,14 +69,16 @@ class Weather():
         seeing = numpy.sqrt(seeing**2 + config['seeing_Telescope']**2)
         return seeing
     
-    def setupWeatherDB(self, db, config):
+    def _setupWeatherDB(self, db, config):
         """Read a data file into a sqlite in-memory database. (dbname == 'seeing' or 'cloud'). """
         dbnames = ('seeing', 'cloud')
         if db not in dbnames:
             raise Exception('dbname should be one of %s' %(dbnames))
         filename = config['%s_datafile' %(db)]
+        print '# Will read %s data from %s' %(db, filename)
         # If filename ends with .sqlite, assume it holds data from a sqlite file.
         if filename.endswith('.sqlite'):
+            print '# Assuming this file is full sqlite dump. '
             file = open(filename, 'r')
             # Read the sqlite file. 
             with file:
@@ -86,7 +91,8 @@ class Weather():
             file.close()
         # If the filename ends with .txt, assume it is a flat data file and must be inserted manually.
         # Also assume flat file contains only date / value in a CSV file. 
-        if filename.endswith('.txt'):
+        else:
+            print '# Assuming this file is text or data file only, and should insert each individual line of data.'
             file = open(filename, 'r')
             # Set up the in memory database
             conn = sqlite3.connect(':memory:')
@@ -105,16 +111,20 @@ class Weather():
             file.close()
         # Check the total amount of data (mostly for user awareness):
         cursor.execute('select count(date) from %s' %(db))
-        print 'Added %d reference observations to %s table.' %(cursor.fetchall()[0][0], db)
+        print '# Added %d reference observations to %s table.' %(cursor.fetchall()[0][0], db)
+        # Add an index on time. 
+        cursor.execute('create index date_idx on %s(date)' %(db))
+        print '# Added an index on date' 
         # Get the total length of time included in this (seeing/cloud) database,
         #  so that we can determine a wrap-around date for the table if we need that.
         query = 'select max(date) from %s' %(db)
         cursor.execute(query)
         res = cursor.fetchall()
+        print res
         date_max = float(res[0][0])
         return date_max, conn, cursor
 
-    def queryDB(self, mjd, db, config):
+    def _queryDB(self, mjd, db, config):
         """Query in-memory sqlite database for cloud or seeing information.
         Returns an interpolated or extrapolated value (from nearest neighbors in time).
         Since weather databases may cover a shorter length of time than the simulated survey,
