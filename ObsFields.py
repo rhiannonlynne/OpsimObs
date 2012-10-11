@@ -56,7 +56,7 @@ class ObsFields():
         self.mjd = numpy.array(self.mjd, float)
         self.filter = numpy.array(self.filter, str)
         self.exptime = numpy.array(self.exptime, float)
-        print 'Read %d input observations.' %(len(self.ra))
+        print '# Read %d input observations.' %(len(self.ra))
         return 
 
     def _calcNight(self, midnight=0.16):
@@ -104,7 +104,7 @@ class ObsFields():
                 if ((self.mjd[i] - self.mjd[i-1])*_day2sec) < config['filter_time']:
                     raise Exception('Cannot request observations with filter changes spaced less than %f seconds apart. Fails at %f'  %(config['filter_time'], self.mjd[i-1]))
         # Finished basic checks.    
-        print 'Passed basic checks on observations.'
+        print '# Passed basic checks on observations.'
         return
 
 
@@ -133,12 +133,12 @@ class ObsFields():
 
 
     def printObs(self, sun, moon, sky, maglimit, config):
-        survey_day = numpy.floor(self.mjd - config['sim_start'] - config['midnight'] - 0.5)
-        print '#RA  Dec  MJD  filter  Alt  Az  Airmass  Cloud   Seeing  SunAlt SunAz   MoonAlt  MoonAz  MoonPhase SkyBrightness Maglimit SurveyNight Downtime?(0=No,1=Yes)'
+        survey_day = numpy.floor(self.mjd - config['sim_start'] - config['midnight'] + 0.5)
+        print '# RA  Dec  MJD  filter  Alt  Az  Airmass  Cloud   Seeing  SunAlt SunAz   MoonAlt  MoonAz  MoonPhase MoonPhase(opsim) SkyBrightness Maglimit SurveyNight Downtime?(0=No,1=Yes)'
         for i in range(len(self.mjd)):
-            print '%.5f %.5f %.7f %s %.5f %.4f %.3f %.2f %.3f %.3f %.3f %.3f %.3f %.2f %.2f %.2f %d %d' \
+            print '%.5f %.5f %.7f %s %.5f %.4f %.3f %.2f %.3f %.3f %.3f %.3f %.3f %.2f %.2f %.2f %.2f %d %d' \
                 % (self.ra[i], self.dec[i], self.mjd[i], self.filter[i],
                    self.alt[i], self.az[i], self.airmass[i],
                    self.cloud[i], self.seeing[i],
-                    sun.alt[i], sun.az[i], moon.alt[i], moon.az[i], moon.phase[i], sky[i], maglimit[i], survey_day[i], self.downstatus[i])
+                    sun.alt[i], sun.az[i], moon.alt[i], moon.az[i], moon.phase[i], moon.illum[i], sky[i], maglimit[i], survey_day[i], self.downstatus[i])
         return

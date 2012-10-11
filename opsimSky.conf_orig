@@ -1,15 +1,18 @@
 # Simulation 'start' day (for syncing with cloud/seeing data). (mjd)
-sim_start = 49353.0
-seeing_start = 0.0
-cloud_start = 0.0
+sim_start = 0.0
+seeing_start = 49353.0
 
 # Seeing data file
-#seeing_datafile = SeeingPachon.txt
-seeing_datafile = seeing.sqlite
+seeing_data = SeeingPachon.txt
 # Cloud data file
-#cloud_datafile = TololoCloud.txt
-cloud_datafile = cloud.sqlite
+cloud_data = TololoCloud.txt
 
+# List of the LSST filters. 
+filter_names = ('u', 'g', 'r', 'i', 'z', 'y', 'y3', 'y4')
+
+# Effective wavelengths of each filter (for seeing corrections). 
+filter_wavelen = {'u':359, 'g':479, 'r':620, 'i':753, 'z':869, 
+			'y':967, 'y3':996, 'y4':967}	
 
 # Number of filters that can be used in the telescope in one night.
 n_simultaneous_filters = 5
@@ -23,7 +26,7 @@ add_shutter = 0
 # Slew time
 slew_time = 5.0
 # is slew time included in the overall exposure time? (0 = not, 1 = it is included)
-add_slew = 0
+add_slew = 1
 # Filter change time (seconds)
 filter_time = 120.0
 # Number of exposures per line in input file ('visit') [set to 1 if you are using single exposures, use 2 if you are using typical opsim 'visits'].
@@ -39,4 +42,11 @@ temperature = 285.655
 relativeHumidity  = 0.40
 lapseRate = 0.0065
 
+# Seeing budgeted to telescope (added in quadrature to all atmospheric values).
+seeing_telescope = 0.323
 
+# Seeing limit (good end) " (to avoid tails of gaussian distribution?)
+seeing_limit = 0.25 
+
+# Minimum distance to moon (degrees)
+min_moon_distance = 15

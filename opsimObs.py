@@ -32,6 +32,12 @@ _rad2deg = 180.0/numpy.pi
 _sec2day = 1/60.0/60.0/24.0
 _day2sec = 24.0*60.0*60.0
 
+import time
+def dtime(time_prev):
+    return (time.time() - time_prev), time.time()
+    
+
+
 def setDefaultConfigs(override_file = None):
     """ Set some default configuration parameters for the LSST. The override_file can be used to override
     these parameters - file format should be 'keyword' 'value' (keyword should match one of the dictionary
@@ -42,7 +48,7 @@ def setDefaultConfigs(override_file = None):
     config_keys = ['sim_start', 'seeing_start', 'cloud_start', 'seeing_datafile', 'cloud_datafile',
                    'filter_names', 'seeing_wavelen', 'filter_wavelen',
                    'schedDowntime_datafile', 'unschedDowntime_datafile']
-    config_keytypes = [float, float, str, str, tuple, float, dict, str, str]
+    config_keytypes = [float, float, float, str, str, tuple, float, dict, str, str]
     # Simulation 'start' day (UTC MJD) for placing location of Earth / visibility of fields.
     # OpSim starts this on 49353 (to match with start of the weather data).  (sim_start == seeing_start ..)
     config['sim_start'] = 49353.0
@@ -109,14 +115,16 @@ def setDefaultConfigs(override_file = None):
         file = open(override_file, 'r')
         for line in file:
             # Skip comments or incomplete keyword / value pairs. 
-            if (line.startswith('#') or line.startswith('!') or (len(line.split())<2)):
+            if (line.startswith('#') or line.startswith('!') or (len(line.split())<3)):
                 continue
-            # Get the keyword / value pairs from this line.
+            # Get the keyword / "=" /  value pairs from this line.
             keyword = line.split()[0]
-            value = line.lstrip(keyword).lstrip()
+            value = line.lstrip(keyword).lstrip().lstrip('=').lstrip()
+            value = value.rstrip()
             # Evaluate and override default dictionary settings.
             if keyword in config_keys:
                 ix = config_keys.index(keyword)
+                print '# Overriding ', keyword,' from ', config[keyword], 'to ', value, ' (a %s value)' %(config_keytypes[ix])
                 config[keyword] = config_keytypes[ix](value)
             else:
                 raise warnings.warn('Unrecognized keyword %s: ignoring this value.' %(keyword))
@@ -142,37 +150,53 @@ if __name__ == '__main__':
                    relativeHumidity=config['relativeHumidity'], lapseRate=config['lapseRate'])
 
     # Set up a Weather object to read the site weather data.
+    t = time.time()
     weather = Weather()
     weather.readWeather(config)
+    dt, t = dtime(t)
+    print '# Reading weather required %.2f seconds' %(dt)
 
     # Set up a Downtime object to read the downtime data.
     downtime = Downtime()
     downtime.readDowntime(config)
+    dt, t = dtime(t)
+    print '# Reading downtime required %.2f seconds' %(dt)
 
     # Read observations.
     obs = ObsFields()
     obs.readInputObs(inputobs_file)
     # Check timing of input observations.
     obs.checkInputObs(config)
+    nobs = len(obs.ra)
+    dt, t = dtime(t)
+    print '# Checking %d input observations required %.2f seconds' %(nobs, dt)
+
     # Calculate alt/az/airmass for all fields.
     obs.getAltAzAirmass(skypos)
     # Calculate weather (cloud/seeing) for all fields.
+    dt, t = dtime(t)
     obs.getObsWeather(weather, config)
-
+    dt, t = dtime(t)
+    print '# Getting weather information for %d observations required %.2f seconds' %(nobs, dt)
     # Check downtime status for these observations
     obs.getDowntime(downtime, config)
 
     # Calculate position of sun at the times of these observations.
     sun = Sun()
+    dt, t = dtime(t)
     sun.calcPos(obs.mjd)
     sun.getAltAz(skypos)
+    dt, t = dtime(t)
+    print '# Calculating sun position at %d times required %.2f seconds' %(nobs, dt)
 
     # Calculate the position, phase and altitude of the Moon. 
     moon = Moon()
     moon.calcPos(obs.mjd, config)
     moon.getAltAz(skypos)
+    dt, t = dtime(t)
+    print '# Calculating moon position at %d times required %.2f seconds' %(nobs, dt)
 
-    # Sorry .. these last parts should be cleaned up a bit. Will do when time available. 
+    # Will clean this up and put into classes as time is available. 
     # Calculate the sky brightness. 
     skybright = SkyBright(model='Perry', solar_phase='ave')    
     sky = numpy.zeros(len(obs.mjd), 'float')
@@ -183,6 +207,8 @@ if __name__ == '__main__':
         sky[i] = skybright.getSkyBright()
         # Add modification to match 'skybrightness_modified' (which is brighter in twilight)
         sky = numpy.where(sun.alt > -18, 17, sky)
+    dt, t = dtime(t)
+    print '# Calculating the sky brightness for %d observations required %.2f seconds' %(nobs, dt)
 
     # Calculate the 5-sigma limiting magnitudes. 
     maglimit = numpy.zeros(len(obs.mjd), 'float')
@@ -198,10 +224,12 @@ if __name__ == '__main__':
         # Calculate telescope zeropoints.        
         opentime = ((expT - config['readout_time']*config['nexp_visit'] -  config['nexp_visit']* config['add_shutter']*config['shutter_time']) 
                     / config['nexp_visit'])
-        print "# Calculating depth for %d exposures of %d open shutter time" %(config['nexp_visit'], opentime)
+        print "# Calculating depth for %d exposures of %.2f open shutter time" %(config['nexp_visit'], opentime)
         m5.setup_values(expTime=opentime, nexp=config['nexp_visit'])
         # Calculate 5sigma limiting magnitudes. 
-        maglimit[condition] = m5.calc_maglimit(obs.seeing[condition], sky[condition], obs.filter[condition], obs.airmass[condition], snr=5.0)        
+        maglimit[condition] = m5.calc_maglimit(obs.seeing[condition], sky[condition], tmp_filters[condition], obs.airmass[condition], snr=5.0)        
+    dt, t = dtime(t)
+    print '# Calculating the m5 limit for %d observations required %.2f seconds' %(nobs, dt)
         
     # Print out interesting values. 
     obs.printObs(sun, moon, sky, maglimit,  config)

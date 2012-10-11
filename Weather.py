@@ -86,7 +86,7 @@ class Weather():
         self.dates[w] = numpy.array(self.dates[w], float)
         self.weather[w] = numpy.array(self.weather[w], float)
         # Check the total amount of data (mostly for user awareness):
-        print 'Read %d weather values from %s file. ' %(len(self.weather[w]), filename)
+        print '# Read %d weather values from %s file. ' %(len(self.weather[w]), filename)
         # Get the total length of time included in this (seeing/cloud) file,
         #  so that we can determine a wrap-around date if we need that.
         self.maxtime[w] = self.dates[w].max()

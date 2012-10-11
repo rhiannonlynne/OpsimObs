@@ -54,7 +54,7 @@ class Downtime():
         self.downdates[s] = numpy.array(self.downdates[s], int)
         #print self.downdates[s]
         # Check the total amount of data (mostly for user awareness):
-        print 'Read %d downtime nights from %s file. ' %(len(self.downdates[s]), filename)
+        print '# Read %d downtime nights from %s file. ' %(len(self.downdates[s]), filename)
 
     def checkDownstatus(self, mjd, config):
         """Check whether telescope is 'open' or not. """    

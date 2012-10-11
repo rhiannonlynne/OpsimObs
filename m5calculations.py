@@ -154,10 +154,19 @@ class m5calculations():
     def check_filter(self, filter):
         """Check filter array for consistency with internal set. Basically this means replace 'y' with
         the default y band choice. """
-        filter = numpy.where(filter == 'y', self.default_y, filter)
+        # Might have to generate a new filter array, if the length of the previous values was too short to hold default_y.
+        newfilter = numpy.empty(len(filter), dtype=('str', len(self.default_y)))
+        condition = (filter == 'y')
+        newfilter[condition] = self.default_y
+        condition = (filter != 'y')
+        newfilter[condition] = filter[condition]
+        filter = newfilter
         filters_used = numpy.unique(filter)
         for f in filters_used:
             if f not in self.filterlist:
+                print 'Having a problem with %s, which has length %d (spaces?)' %(f, len(f))
+                indices = numpy.where(filter==f)
+                print 'This pops up at observation(s) ', indices
                 raise Exception('I do not recognize filter %s' %(f))
         return filter
     

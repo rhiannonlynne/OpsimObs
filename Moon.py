@@ -40,10 +40,10 @@ class Moon():
         lon_sun = sun.getLon(self.mjd)*_deg2rad
         # Calculate the solar elongation of the Moon.
         solarelong = numpy.arccos(numpy.cos((lon_sun - eclon)) * numpy.cos(eclat))
-        # Calculate the phase of the moon.
+        # Calculate the phase of the moon. This is the 0-180 degrees phase. 
         self.phase = 180.0 - solarelong*_rad2deg
-        # Calculate the illumination of the Moon. 
-        self.illum = ( 1 + numpy.cos(self.phase*_deg2rad) )/2.0
+        # Calculate the illumination of the Moon. This is between 0 - 100, and is what Opsim calls 'moonPhase'.
+        self.illum = ( 1 + numpy.cos(self.phase*_deg2rad) )/2.0 * 100.0
         return
     
     def getAltAz(self, skypos):
