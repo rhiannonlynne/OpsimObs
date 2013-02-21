@@ -18,7 +18,8 @@ All angles are in DEGREES.
 The methods could all handle arrays instead of single values, except that only a 
 single bandpass at a time is supported. 
 
-Note that 'y' == 'y3' == 'y4' at the moment, since I don't have the values for 'y4'. 
+Note that the color terms (extinction and coefficients for lunar color change with phase) for
+  'y' are equal for both 'y3' & 'y4' at the moment, since I don't have the values for 'y4'. 
 
 Typical usage for this class would be as follows:
  s = SkyBright(model='Perry', solar_phase='ave')
@@ -142,16 +143,16 @@ class SkyBright:
         self.field_alt = field_alt
         self.field_az = field_az
         if numpy.shape(self.field_alt) != numpy.shape(self.field_az):
-            raise ValueError("Field altitude and azimuth must have the same length.")
-        test = 0
+            raise ValueError("Field altitude and azimuth must have the same length.")        
+        # Check that incoming values are compatible .. 
+        #  that is, if field values are array - then moon alt/az has to be array of same length, or single value
         if isinstance(self.moon_alt, numpy.ndarray):
-            test = test+1
-        if isinstance(self.field_alt, numpy.ndarray):
-            test = test+1
+            if isinstance(self.field_alt, numpy.ndarray):
+                if (numpy.shape(self.moon_alt) != numpy.shape(self.field_alt)):
+                    raise ValueError('If both field and moon positions are arrays, they must be the same length.')
         if isinstance(self.moon_phase, numpy.ndarray):
-            test = test+1
-        if test>1:
-            raise Exception("Only one of field pointings, moon pointings, or moon phase can be an array.")
+            if (numpy.shape(self.moon_alt) != numpy.shape(self.moon_phase)):
+                raise ValueError('If the moon phase is given as an array, it must be the same length as the moon positions.')
         return
 
     def printVals(self):

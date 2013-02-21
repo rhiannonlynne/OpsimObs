@@ -71,10 +71,12 @@ def setDefaultConfigs(override_file = None):
     config['unschedDowntime_datafile'] = 'unschedDown.conf'
     # These next parameters are used to do a rudimentary check on if requested observations are possible
     #  based on some simple time requirements (filter changes, number of filters within a night..).
-    config_keys += ['n_simultaneous_filters', 'readout_time', 'shutter_time', 'filter_time', 'slew_time',
+    config_keys += ['check_observations', 'n_simultaneous_filters', 'readout_time', 'shutter_time', 'filter_time', 'slew_time',
                     'nexp_visit', 'add_shutter', 'add_slew']
-    config_keytypes += [int, float, float, float, float, int, int, int]
+    config_keytypes += [int, int, float, float, float, float, int, int, int]
     # Note that this check does NOT include any instrument model or slew time needed. 
+    # Do consistency checks for incoming observations (to check minimum time spacing, etc.)
+    config['check_observations'] = 1
     # Number of filters that can be used in the telescope in one night.
     config['n_simultaneous_filters'] = 5
     # Readout time (seconds)
@@ -91,7 +93,7 @@ def setDefaultConfigs(override_file = None):
     config['filter_time'] = 120.0
     # Number of exposures per visit (1==one exp per visit) .. telescope slew/settle happens after visit, if 'add_slew'.
     #  NOTE : the input 'observation' file should only record VISITS 
-    config['nexp_visit'] = 2.0
+    config['nexp_visit'] = 1.0
     # These next parameters are used to determine some parameters for the LSST telescope.
     config_keys += ['latitude', 'longitude', 'height', 'pressure', 'temperature', 'relativeHumidity', 'lapseRate']
     config_keytypes += [float, float, float, float, float, float, float]
@@ -133,8 +135,11 @@ def setDefaultConfigs(override_file = None):
 
 
 if __name__ == '__main__':
-
+    
     inputobs_file = sys.argv[1]
+    if ((inputobs_file == 'help') | (inputobs_file == '-h')):
+        print '   Usage: <python> opsimObs.py inputobs_filename [override_config_filename]'
+        exit()
     # Deal with input configuration information. 
     if len(sys.argv)> 2:
         override_config_file = sys.argv[2]
@@ -164,15 +169,22 @@ if __name__ == '__main__':
 
     # Read observations.
     obs = ObsFields()
-    obs.readInputObs(inputobs_file)
-    # Check timing of input observations.
-    obs.checkInputObs(config)
+    obs.readInputObs(inputobs_file, config)
     nobs = len(obs.ra)
     dt, t = dtime(t)
-    print '# Checking %d input observations required %.2f seconds' %(nobs, dt)
+    print '# Reading %d input observations required %.2f seconds' %(nobs, dt)
+    # Check timing of input observations.
+    if config['check_observations']:
+        obs.checkInputObs(config)
+        dt, t = dtime(t)
+        print '# Checking %d input observations required %.2f seconds' %(nobs, dt)
+    else:
+        print '# Did not check input observations for minimum required timing separation!'
 
     # Calculate alt/az/airmass for all fields.
     obs.getAltAzAirmass(skypos)
+    dt, t = dtime(t)
+    print '# Calculating alt/az/airmass for %d input observations required %.2f seconds' %(nobs, dt)
     # Calculate weather (cloud/seeing) for all fields.
     dt, t = dtime(t)
     obs.getObsWeather(weather, config)
@@ -200,13 +212,21 @@ if __name__ == '__main__':
     # Calculate the sky brightness. 
     skybright = SkyBright(model='Perry', solar_phase='ave')    
     sky = numpy.zeros(len(obs.mjd), 'float')
+    filterlist = numpy.unique(obs.filter)
+    for f in filterlist:
+        condition = (obs.filter == f)
+        skybright.setSkyBright(obs.alt[condition], obs.az[condition], moon.alt[condition], moon.az[condition], 
+                               moon.phase[condition], bandpass = f)
+        sky[condition] = skybright.getSkyBright()
+    """
     for i in range(len(obs.mjd)):
         # Calculate sky brightness for each observation. 
         skybright.setSkyBright(obs.alt[i], obs.az[i], moon.alt[i], moon.az[i], moon.phase[i], 
                                bandpass=obs.filter[i])
         sky[i] = skybright.getSkyBright()
-        # Add modification to match 'skybrightness_modified' (which is brighter in twilight)
-        sky = numpy.where(sun.alt > -18, 17, sky)
+    """
+    # Add modification to match 'skybrightness_modified' (which is brighter in twilight)
+    sky = numpy.where(sun.alt > -18, 17, sky)
     dt, t = dtime(t)
     print '# Calculating the sky brightness for %d observations required %.2f seconds' %(nobs, dt)
 
@@ -222,8 +242,9 @@ if __name__ == '__main__':
     for expT in exptimes:
         condition = [obs.exptime == expT]
         # Calculate telescope zeropoints.        
+        # Calculate actual open-sky time, after accounting for readout time, number of exposures per visit, shutter time, etc.
         opentime = ((expT - config['readout_time']*config['nexp_visit'] -  config['nexp_visit']* config['add_shutter']*config['shutter_time']) 
-                    / config['nexp_visit'])
+                    / float(config['nexp_visit']))
         print "# Calculating depth for %d exposures of %.2f open shutter time" %(config['nexp_visit'], opentime)
         m5.setup_values(expTime=opentime, nexp=config['nexp_visit'])
         # Calculate 5sigma limiting magnitudes. 

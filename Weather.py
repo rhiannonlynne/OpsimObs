@@ -40,30 +40,36 @@ class Weather():
         cloud = self._checkWeather(mjd, w, config)
         return cloud
         
-    def getSeeing(self, mjd, airmass, filter, config):
+    def getSeeing(self, mjd, airmass, config, filter=None,  filterwavelength=None):
         """Query the seeing data to return an interpolated seeing value.
         Must provide the airmass and filter of observation to provide adjustments for the
-        effect of the atmosphere and filter (and telescope components). """
+        effect of the atmosphere and filter (and telescope components). 
+        Optionally provide filterwavelength array (rather than look up in this routine), if
+        precalculated this while reading observations. """
         w = 'seeing'
         rawseeing = self._checkWeather(mjd, w, config)
         # If the raw seeing is 'too good to be true', swap to 'good_seeing_limit' instead.
         rawseeing = numpy.where(rawseeing<config['good_seeing_limit'], config['good_seeing_limit'], rawseeing)
         # Adjust seeing for airmass of observation.
         seeing = rawseeing * numpy.power(airmass, 0.6)
-        # Adjust seeing for the filter.
-        #  do this if the filters are a numpy array (and possibly different filters).
-        if isinstance(filter, numpy.ndarray) | isinstance(filter, list):
-            filterwavelength = numpy.empty(len(filter), float)
-            for i in range(len(filter)):
-                filterwavelength[i] = config['filter_wavelen'][filter[i]]
-        else:
-            # do this if there is only one filter given.
-            filterwavelength = config['filter_wavelen'][filter] 
+        # Adjust seeing for the filter. 
+        # If no filter is specified, just use r band.
+        if filter == None:
+            filterwavelength = config['filter_wavelen']['r']
+        if filterwavelength == None:
+            #  do this if the filters are a numpy array (and possibly different filters).
+            if isinstance(filter, numpy.ndarray) | isinstance(filter, list):
+                filterwavelength = numpy.empty(len(filter), float)
+                for i in range(len(filter)):
+                    filterwavelength[i] = config['filter_wavelen'][filter[i]]
+            else:
+                # do this if there is only one filter given.
+                filterwavelength = config['filter_wavelen'][filter] 
         basewavelength = config['seeing_wavelen']
         seeing = seeing * numpy.power(basewavelength / filterwavelength, 0.2)
         # Adjust seeing for the telescope systematic floor.        
         seeing = numpy.sqrt(seeing**2 + config['seeing_Telescope']**2)
-        return seeing
+        return rawseeing, seeing
     
     def _setupWeather(self, w, config):
         """Read a data file into  numpy arrays. (w == 'seeing' or 'cloud'). """
@@ -87,6 +93,11 @@ class Weather():
         self.weather[w] = numpy.array(self.weather[w], float)
         # Check the total amount of data (mostly for user awareness):
         print '# Read %d weather values from %s file. ' %(len(self.weather[w]), filename)
+        # Check that weather data is monotonically increasing in time. 
+        if not(numpy.all(numpy.diff(self.dates[w]))):
+            order = self.dates[w].argsort()
+            self.weather[w] = self.weather[w][order]
+            self.dates[w] = self.dates[w][order]
         # Get the total length of time included in this (seeing/cloud) file,
         #  so that we can determine a wrap-around date if we need that.
         self.maxtime[w] = self.dates[w].max()
@@ -94,15 +105,15 @@ class Weather():
 
     def _checkWeather(self, mjd, w, config):
         """Check the weather (clouds or seeing) for a given mjd, either single value or multiples."""
-        if isinstance(mjd, float):
-            return self._do_checkWeather(mjd, db, config)
-        if (isinstance(mjd, float) == False):
-            # So let's assume mjd was either a list or a numpy array. Just iterate through it. 
-            values = numpy.empty(len(mjd), float)
-            for i in range(len(mjd)):
-                values[i] = self._do_checkWeather(mjd[i], w, config)
-            return values
-
+        # Convert mjd to the relevant time units of the weather dates.                                                                                                                      
+        time = (mjd - config['sim_start'] + config['%s_start' %(w)]) * _day2sec
+        # And wrap the time, if we need to. 
+        time = time % self.maxtime[w]
+        # Then use numpy interp to find the weather values for all of our times (works for single values or for arrays). 
+        # Requires that the 'weather' times are monotonically increasing, but this is true.  (and checked when weather read in).
+        # Find the *interpolated* weather values
+        values = numpy.interp(time, self.dates[w], self.weather[w])
+        return values
 
     def _do_checkWeather(self, mjd, w, config):
         """Check in-memory cloud or seeing information for a single MJD.
@@ -123,12 +134,7 @@ class Weather():
         weather2 = self.weather[w][time_order[1]]
         # Do interpolation for weather at this particular time.
         weather = (weather2 - weather1) / (date2 - date1) * (time - date1) + weather1
-        # Check within 0-1 limits.
-        if weather<0:
-            weather = 0
-        if weather>1:
-            weather = 1
-        return weather
+        return weather, weather1
 
 
 
