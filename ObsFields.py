@@ -75,9 +75,9 @@ class ObsFields():
         self.exptime = numpy.array(self.exptime, float)
         # Sort observations into time order, if needed. 
         if config['check_observations']:
-            if not(numpy.all(numpy.diff(self.dates[w]))):
-                order = numpy.argsort(self.mjd)
-                self.ra = self.ra[order]
+            if not(numpy.all(numpy.diff(self.mjd))): # check all mjd's are unique
+                order = numpy.argsort(self.mjd)  # order the mjd's
+                self.ra = self.ra[order]  # and fix the order for the other parameters too
                 self.dec = self.dec[order]
                 self.filter = self.filter[order]
                 self.filterwavelength = self.filterwavelength[order]

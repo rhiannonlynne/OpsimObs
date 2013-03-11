@@ -52,6 +52,11 @@ def compare(opsim, opsimObs, nobs=nobs):
         diff = opsim[k] - opsimObs[k2]
         pylab.hist(diff, bins=nobs / 10)
         pylab.title('%s' % (k))
+    # Look in more depth at airmass differences. 
+    pylab.figure()
+    pylab.plot(opsim['airmass'], opsimObs['airmass'], 'b.')
+    pylab.xlabel('opsim airmass')
+    pylab.ylabel('opsimObs airmass')
     # Look more depth at moon phase. 
     pylab.figure()
     pylab.plot(opsim['moonphase'], opsimObs['moonillum'], 'r.')
