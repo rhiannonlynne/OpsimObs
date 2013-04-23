@@ -105,9 +105,9 @@ def setDefaultConfigs(override_file = None):
     config['relativeHumidity'] = 0.40
     config['lapseRate'] =  0.0065
     config['midnight'] = 0.16  # Midnight at LSST is this much past the start of a day (UTC)
-    # Contribution toward the final seeing that comes from the telescope itself (arcseconds)
+    # Contribution toward the final seeing that comes from the telescope and camera (arcseconds)
     #   (the seeing data file is raw atmospheric seeing)
-    config['seeing_Telescope'] = 0.323
+    config['seeing_Telescope'] = 0.38
     # And limit on 'good end' of seeing.
     config['good_seeing_limit'] = 0.25
     # Minimum distance to moon (radians)
