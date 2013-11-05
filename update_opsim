@@ -1,0 +1,56 @@
+mysql5 -u lsst -p opsimdev -e 'select fieldRA*180./PI, fieldDec*180./PI, expmjd, filter, exptime, obshistid from output_opsim3_61'  > all_361.in
+
+<all_361.in sed 's/fieldRA/#fieldRA' > tmp
+/bin/mv tmp all_361.in
+
+python opsimObs.py all_361.in opsimSky.conf > all_361.out
+
+< all_361.out grep -v '#' | awk '{print $8, $10, $18, $21}' > all_361.tmp
+
+
+mysql>alter table output_opsim3_61 add column (interpCloud float, interpSeeing float, interpM5 float);
+
+mysql> alter table output_opsim3_61 add column (interpCloud float, interpSeeing float, interpM5 float);
+
+mysql> load data infile '/Users/ljones/work/opsim/OpsimObs/all_361.tmp' into table interp361 fields terminated by ' '; 
+
+mysql> update  output_opsim3_61 o inner join interp361 i on o.obsHistID = i.obshistID set o.interpCloud = i.interpCloud, o.interpSeeing=i.interpSeeing, o.interpM5 = i.interpM5; 
+
+
+# example: 
+mysql> select xparency, interpCloud, seeing, interpSeeing, 5sigma_modified, interpm5 from output_opsim3_61 limit 30;
++----------+-------------+----------+--------------+-----------------+----------+
+| xparency | interpCloud | seeing   | interpSeeing | 5sigma_modified | interpm5 |
++----------+-------------+----------+--------------+-----------------+----------+
+|        0 |           0 |  1.02527 |        0.929 |         23.3397 |    23.35 |
+|        0 |           0 | 0.987856 |        0.899 |           23.38 |    23.38 |
+|        0 |           0 |  1.03027 |        0.898 |         23.3344 |    23.39 |
+|        0 |           0 | 0.912829 |        0.829 |         23.4658 |    23.47 |
+|        0 |           0 | 0.904287 |        0.832 |          23.476 |    23.47 |
+|        0 |           0 | 0.890414 |        0.798 |         23.4928 |    23.51 |
+|        0 |           0 | 0.938571 |        0.838 |         23.4356 |    23.46 |
+|        0 |           0 |  1.20561 |        0.976 |         22.9264 |     23.1 |
+|      0.5 |        0.48 | 0.981775 |        0.897 |         23.2667 |    23.28 |
+|      0.5 |         0.4 |  1.23242 |         1.15 |         23.0095 |    23.01 |
+|      0.5 |        0.38 |  1.19344 |        1.089 |         23.0424 |    23.07 |
+|     0.25 |         0.3 |  1.06656 |        0.982 |         23.1592 |    23.18 |
+|     0.25 |        0.28 |  1.21205 |        1.207 |         23.0168 |    22.96 |
+|     0.25 |        0.28 |  1.32655 |        1.221 |         22.9188 |    22.94 |
+|        0 |           0 | 0.865472 |        0.733 |         23.5236 |    23.61 |
+|        0 |           0 | 0.881293 |        0.795 |          23.504 |    23.52 |
+|        0 |           0 | 0.909559 |        0.818 |         23.4697 |    23.49 |
+|        0 |           0 |  1.01056 |        0.923 |         23.3554 |    23.36 |
+|        0 |           0 |  1.05806 |        0.977 |         23.3055 |     23.3 |
+|        0 |           0 |  1.07717 |        0.989 |         23.2861 |    23.28 |
+|        0 |           0 |  1.07502 |        1.107 |         23.2882 |    23.16 |
+|        0 |           0 |  1.19724 |        1.109 |         23.1713 |    23.16 |
+|        0 |           0 | 0.799203 |         0.74 |         23.6101 |    23.59 |
+|        0 |           0 | 0.835735 |        0.738 |         23.5616 |     23.6 |
+|        0 |           0 | 0.844073 |        0.753 |         23.5508 |    23.58 |
+|        0 |           0 | 0.764966 |        0.671 |         23.6577 |     23.7 |
+|        0 |           0 | 0.769411 |        0.668 |         23.6514 |    23.71 |
+|     0.25 |        0.23 | 0.987011 |        0.873 |          23.381 |    23.42 |
+|        0 |           0 |  1.02383 |        0.917 |         23.3412 |    23.36 |
+|        0 |           0 |  1.02373 |        0.951 |         23.2282 |    23.23 |
++----------+-------------+----------+--------------+-----------------+----------+
+30 rows in set (0.00 sec)
