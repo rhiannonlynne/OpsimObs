@@ -12,7 +12,8 @@ and report these values to the user.
 Requirements:
 python
 numpy
-
+pyslalib
+LSST 'throughputs' package
 """
 
 import sys
@@ -134,20 +135,8 @@ def setDefaultConfigs(override_file = None):
     return config
 
 
-if __name__ == '__main__':
+def run(inputobs_file, config):
     
-    inputobs_file = sys.argv[1]
-    if ((inputobs_file == 'help') | (inputobs_file == '-h')):
-        print '   Usage: <python> opsimObs.py inputobs_filename [override_config_filename]'
-        exit()
-    # Deal with input configuration information. 
-    if len(sys.argv)> 2:
-        override_config_file = sys.argv[2]
-    else:
-        override_config_file = None
-    # Read configuration parameters.
-    config = setDefaultConfigs(override_config_file)
-
     # Set up a skypos object to hold site information and provide ra/dec -> alt/az/airmass translations.
     skypos = SkyPos()
     skypos.setSite(lat=config['latitude'], lon=config['longitude'], height=config['height'],
@@ -218,13 +207,6 @@ if __name__ == '__main__':
         skybright.setSkyBright(obs.alt[condition], obs.az[condition], moon.alt[condition], moon.az[condition], 
                                moon.phase[condition], bandpass = f)
         sky[condition] = skybright.getSkyBright()
-    """
-    for i in range(len(obs.mjd)):
-        # Calculate sky brightness for each observation. 
-        skybright.setSkyBright(obs.alt[i], obs.az[i], moon.alt[i], moon.az[i], moon.phase[i], 
-                               bandpass=obs.filter[i])
-        sky[i] = skybright.getSkyBright()
-    """
     # Add modification to match 'skybrightness_modified' (which is brighter in twilight)
     sky = numpy.where(sun.alt > -18, 17, sky)
     dt, t = dtime(t)
@@ -255,6 +237,28 @@ if __name__ == '__main__':
     # Print out interesting values. 
     obs.printObs(sun, moon, sky, maglimit,  config)
     
+
+
+
+if __name__ == '__main__':
+
+    
+    
+    inputobs_file = sys.argv[1]
+    if ((inputobs_file == 'help') | (inputobs_file == '-h')):
+        print '   Usage: <python> opsimObs.py inputobs_filename [override_config_filename]'
+        exit()
+    # Deal with input configuration information. 
+    if len(sys.argv)> 2:
+        override_config_file = sys.argv[2]
+    else:
+        override_config_file = None
+    # Read configuration parameters.
+    config = setDefaultConfigs(override_config_file)
+
+    run(inputobs_file, obs)
+
+
 
 
     
