@@ -256,7 +256,7 @@ if __name__ == '__main__':
     # Read configuration parameters.
     config = setDefaultConfigs(override_config_file)
 
-    run(inputobs_file, obs)
+    run(inputobs_file, config)
 
 
 
