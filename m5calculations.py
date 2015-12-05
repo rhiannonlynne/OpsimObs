@@ -12,7 +12,7 @@ class m5calculations():
     def setup_Throughputs(self, rootDir=None, verbose=True):
         """Read bandpasses and dark sky sed.
         Call this method first before doing anything else. """
-        self.filterlist = ('u', 'g', 'r', 'i', 'z', 'y3', 'y4')
+        self.filterlist = ('u', 'g', 'r', 'i', 'z', 'y')
         if rootDir == None:
             rootDir = os.getenv('LSST_THROUGHPUTS_DEFAULT')            
         if rootDir == None:
@@ -20,9 +20,7 @@ class m5calculations():
         # Read in the total transmission curves. 
         self.lsst = {}
         hardwarecomponentlist = ['detector.dat','lens1.dat', 'lens2.dat', 'lens3.dat',
-                                 'm1_ProtAl_Aged.dat', 'm2_ProtAl_Aged.dat', 'm3_ProtAl_Aged.dat']
-                                 #'m1_ProtAl_Ideal.dat', 'm2_ProtAl_Ideal.dat', 'm3_ProtAl_Ideal.dat']
-                                 #'m1_ProtAlAg.dat', 'm2_ProtAlAg.dat', 'm3_ProtAlAg.dat']
+                                 'm1.dat', 'm2.dat', 'm3.dat']
         commoncomponentlist = hardwarecomponentlist + ['atmos_10.dat',]
         for f in self.filterlist:
             componentlist = commoncomponentlist + ['filter_' +f +'.dat',]
